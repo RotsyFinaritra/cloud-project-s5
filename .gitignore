@@ -31,3 +31,10 @@ build/
 
 ### VS Code ###
 .vscode/
+
+# Firebase service account (NE PAS VERSIONNER)
+secrets/
+*.json
+!src/**
+images/
+*.log
