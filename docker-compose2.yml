@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: cloud-project-postgres
+    environment:
+      POSTGRES_DB: clouddb
+      POSTGRES_USER: clouduser
+      POSTGRES_PASSWORD: cloudpass
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - cloud-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clouduser -d clouddb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: cloud-project-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clouddb
+      SPRING_DATASOURCE_USERNAME: clouduser
+      SPRING_DATASOURCE_PASSWORD: cloudpass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - cloud-network
+
+volumes:
+  postgres_data:
+
+networks:
+  cloud-network:
+    driver: bridge

@@ -1,45 +1,53 @@
-version: '3.8'
-
 services:
-  postgres:
+  db-local:
     image: postgres:16-alpine
-    container_name: cloud-project-postgres
+    restart: always
     environment:
-      POSTGRES_DB: clouddb
-      POSTGRES_USER: clouduser
-      POSTGRES_PASSWORD: cloudpass
+      POSTGRES_DB: signalements
+      POSTGRES_USER: signal_user
+      POSTGRES_PASSWORD: signal_pass
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    networks:
-      - cloud-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U clouduser -d clouddb"]
+      test: ["CMD-SHELL", "pg_isready -U signal_user -d signalements"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  app:
-    build: .
-    container_name: cloud-project-app
+  tileserver:
+    image: maptiler/tileserver-gl:v4.4.0
+    restart: always
     ports:
-      - "8080:8080"
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/clouddb
-      SPRING_DATASOURCE_USERNAME: clouduser
-      SPRING_DATASOURCE_PASSWORD: cloudpass
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
-      SPRING_JPA_SHOW_SQL: "true"
+      - "8082:8080"
+    volumes:
+      - ./tiles/antananarivo:/data
+
+  app-java:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    env_file:
+      - .env
+    ports:
+      - "8081:8080"
     depends_on:
-      postgres:
+      db-local:
         condition: service_healthy
-    networks:
-      - cloud-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db-local:5432/signalements
+      SPRING_DATASOURCE_USERNAME: signal_user
+      SPRING_DATASOURCE_PASSWORD: signal_pass
+      TILESERVER_URL: http://tileserver:8080
+    volumes:
+      - ./logs:/app/logs  # Optionnel pour logs
 
 volumes:
   postgres_data:
-
-networks:
-  cloud-network:
-    driver: bridge
