@@ -71,4 +71,9 @@ public class FirebaseUserService implements UserService {
             throw new IllegalArgumentException("Unable to update Firebase user");
         }
     }
+
+    @Override
+    public void unblockUser(String email) throws Exception {
+        throw new UnsupportedOperationException("Unblock not supported for Firebase users");
+    }
 }

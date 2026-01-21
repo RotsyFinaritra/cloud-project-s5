@@ -38,6 +38,11 @@ public class AuthFilter extends OncePerRequestFilter {
                 var auth = new UsernamePasswordAuthenticationToken(subject, null, Collections.emptyList());
                 auth.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(auth);
+            } catch (io.jsonwebtoken.ExpiredJwtException eje) {
+                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                response.setContentType("application/json");
+                response.getWriter().write("{\"error\":\"Session expired. Please login again.\"}");
+                return;
             } catch (Exception e) {
                 // try Firebase idToken
                 try {

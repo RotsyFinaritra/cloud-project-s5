@@ -7,4 +7,5 @@ public interface UserService {
     User register(AuthDtos.RegisterRequest request) throws Exception;
     AuthDtos.AuthResponse authenticate(AuthDtos.LoginRequest request) throws Exception;
     User updateUser(String email, AuthDtos.UpdateUserRequest request) throws Exception;
+    void unblockUser(String email) throws Exception;
 }

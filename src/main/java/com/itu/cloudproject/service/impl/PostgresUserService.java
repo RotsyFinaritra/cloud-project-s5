@@ -13,6 +13,8 @@ import java.util.Optional;
 
 @Service
 public class PostgresUserService implements UserService {
+    // Configurable max login attempts (could be injected via @Value or config, here hardcoded for simplicity)
+    private static final int MAX_LOGIN_ATTEMPTS = 5;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -42,9 +44,32 @@ public class PostgresUserService implements UserService {
         Optional<User> uo = userRepository.findByEmail(request.email());
         if (uo.isEmpty()) throw new IllegalArgumentException("Invalid credentials");
         User u = uo.get();
+
+        // Check if user is blocked
+        if (u.isBlocked()) {
+            throw new IllegalArgumentException("Account is blocked due to too many failed login attempts.");
+        }
+
+        // Check password
         if (u.getPassword() == null || !passwordEncoder.matches(request.password(), u.getPassword())) {
+            // Increment login attempts
+            u.setLoginAttempts(u.getLoginAttempts() + 1);
+            // Block if over max attempts
+            if (u.getLoginAttempts() >= MAX_LOGIN_ATTEMPTS) {
+                u.setBlocked(true);
+                u.setBlockedAt(java.time.OffsetDateTime.now());
+            }
+            userRepository.save(u);
             throw new IllegalArgumentException("Invalid credentials");
         }
+
+        // Reset login attempts on successful login
+        u.setLoginAttempts(0);
+        u.setBlocked(false);
+        u.setBlockedAt(null);
+        u.setLastLogin(java.time.OffsetDateTime.now());
+        userRepository.save(u);
+
         String token = jwtUtil.generateToken(u.getEmail());
         return new AuthDtos.AuthResponse(token, "Bearer");
     }
@@ -55,5 +80,15 @@ public class PostgresUserService implements UserService {
         User u = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
         if (request.fullName() != null) u.setFullName(request.fullName());
         return userRepository.save(u);
+    }
+
+    @Override
+    @Transactional
+    public void unblockUser(String email) throws Exception {
+        User u = userRepository.findByEmail(email).orElseThrow(() -> new IllegalArgumentException("User not found"));
+        u.setBlocked(false);
+        u.setLoginAttempts(0);
+        u.setBlockedAt(null);
+        userRepository.save(u);
     }
 }

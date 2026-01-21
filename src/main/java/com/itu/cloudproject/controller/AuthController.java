@@ -35,4 +35,10 @@ public class AuthController {
         var updated = userService.updateUser(principal, req);
         return ResponseEntity.ok(updated);
     }
+
+    @PostMapping("/unblock/{email}")
+    public ResponseEntity<?> unblockUser(@PathVariable String email) throws Exception {
+        userService.unblockUser(email);
+        return ResponseEntity.ok().body("User unblocked");
+    }
 }
