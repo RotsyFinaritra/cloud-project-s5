@@ -1,5 +1,9 @@
 package com.itu.cloudproject.service.impl;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
 import com.google.firebase.auth.UserRecord;
@@ -7,10 +11,9 @@ import com.itu.cloudproject.model.User;
 import com.itu.cloudproject.security.JwtUtil;
 import com.itu.cloudproject.service.UserService;
 import com.itu.cloudproject.service.dto.AuthDtos;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@ConditionalOnProperty(name = "firebase.enabled", havingValue = "true")
 public class FirebaseUserService implements UserService {
 
     private final FirebaseAuth firebaseAuth;
@@ -33,15 +36,19 @@ public class FirebaseUserService implements UserService {
         u.setEmail(ur.getEmail());
         u.setFullName(ur.getDisplayName());
         u.setProvider("FIREBASE");
-        // Note: we do not persist to Postgres here. This implementation creates the user in Firebase.
+        // Note: we do not persist to Postgres here. This implementation creates the
+        // user in Firebase.
         return u;
     }
 
     @Override
     public AuthDtos.AuthResponse authenticate(AuthDtos.LoginRequest request) throws Exception {
-        // For Firebase, authentication should be done client-side (Firebase SDK) which returns an idToken.
-        // The client can then send the idToken to the server where we verify it and optionally mint a local JWT.
-        if (request.idToken() == null) throw new IllegalArgumentException("For Firebase login, send idToken");
+        // For Firebase, authentication should be done client-side (Firebase SDK) which
+        // returns an idToken.
+        // The client can then send the idToken to the server where we verify it and
+        // optionally mint a local JWT.
+        if (request.idToken() == null)
+            throw new IllegalArgumentException("For Firebase login, send idToken");
         try {
             var decoded = firebaseAuth.verifyIdToken(request.idToken());
             String uid = decoded.getUid();
@@ -60,7 +67,8 @@ public class FirebaseUserService implements UserService {
         try {
             UserRecord ur = firebaseAuth.getUserByEmail(email);
             UserRecord.UpdateRequest urq = new UserRecord.UpdateRequest(ur.getUid());
-            if (request.fullName() != null) urq.setDisplayName(request.fullName());
+            if (request.fullName() != null)
+                urq.setDisplayName(request.fullName());
             UserRecord updated = firebaseAuth.updateUser(urq);
             User u = new User();
             u.setEmail(updated.getEmail());
